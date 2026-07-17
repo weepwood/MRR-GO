@@ -1,0 +1,46 @@
+name: Bootstrap source tree
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "bootstrap/**"
+      - ".github/workflows/bootstrap.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  unpack:
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+          fetch-depth: 0
+
+      - name: Verify, unpack and commit source
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ ! -f bootstrap/ready ]; then
+            echo "Bootstrap payload is not ready or has already been unpacked"
+            exit 0
+          fi
+          cat bootstrap/source.part* > /tmp/mrr-go-source.b64
+          echo "fc4653d58bb9961f17d9fd930519f37accba662ab2a8cb59060b743189ba7148  /tmp/mrr-go-source.b64" | sha256sum -c -
+          base64 --decode /tmp/mrr-go-source.b64 > /tmp/mrr-go-source.tar.gz
+          echo "2dba7eeea376cda8a132fd2a9919b2e3ce1ec8ce7e4c7370f214c553e5e3ed31  /tmp/mrr-go-source.tar.gz" | sha256sum -c -
+          tar -xzf /tmp/mrr-go-source.tar.gz -C .
+          rm -rf bootstrap
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          if git diff --cached --quiet; then
+            echo "No extracted changes to commit"
+            exit 0
+          fi
+          git commit -m "feat: implement Go backend rewrite"
+          git push origin HEAD:${{ github.event.pull_request.head.ref }}
