@@ -1,9 +1,9 @@
 name: Bootstrap source tree
 
 on:
-  push:
+  pull_request:
     branches:
-      - feat/go-backend-rewrite
+      - main
     paths:
       - "bootstrap/**"
       - ".github/workflows/bootstrap.yml"
@@ -13,11 +13,12 @@ permissions:
 
 jobs:
   unpack:
-    if: contains(github.event.head_commit.message, 'bootstrap: unpack')
+    if: github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
+          ref: ${{ github.event.pull_request.head.ref }}
           fetch-depth: 0
 
       - name: Verify and unpack source
@@ -43,4 +44,4 @@ jobs:
             exit 0
           fi
           git commit -m "feat: implement Go backend rewrite"
-          git push origin HEAD:feat/go-backend-rewrite
+          git push origin HEAD:${{ github.event.pull_request.head.ref }}
